@@ -1,5 +1,95 @@
 {
     "1252103981380141078": {
-        "adminSetup": false
+        "adminSetup": false,
+        "adminroles": [
+            "1252103981380141078",
+            "1283236522388095024"
+        ],
+        "channel": "1254482065617981511",
+        "currentId": 13,
+        "suggestions": [
+            {
+                "id": 10,
+                "messageId": "1322288311800303648",
+                "title": "asdf",
+                "description": "alkjf;lsdkfj\n\n⬆️ Like\n⬇️ Dislike",
+                "status": "Under Review",
+                "color": "#555599",
+                "channel": "1254482065617981511",
+                "tags": [
+                    {
+                        "name": "Like",
+                        "emote": "⬆️"
+                    },
+                    {
+                        "name": "Dislike",
+                        "emote": "⬇️"
+                    }
+                ],
+                "user": "1225628518021599264"
+            },
+            {
+                "id": 11,
+                "messageId": "1322290238269296682",
+                "title": "gasf",
+                "description": "a;dskljf;aldskf4",
+                "status": "Under Review",
+                "color": "#555599",
+                "channel": "1254482065617981511",
+                "tags": [
+                    {
+                        "name": "Like",
+                        "emote": "⬆️"
+                    },
+                    {
+                        "name": "Dislike",
+                        "emote": "⬇️"
+                    }
+                ],
+                "user": "1225628518021599264"
+            },
+            {
+                "id": 12,
+                "messageId": "1322290881214152785",
+                "title": "sadf",
+                "description": "al;skjf;asdf",
+                "status": "Under Review",
+                "color": "#555599",
+                "channel": "1254482065617981511",
+                "tags": [
+                    {
+                        "name": "Like",
+                        "emote": "⬆️"
+                    },
+                    {
+                        "name": "Dislike",
+                        "emote": "⬇️"
+                    }
+                ],
+                "user": "1225628518021599264"
+            },
+            {
+                "id": 13,
+                "messageId": "1322293296915025982",
+                "title": "hello",
+                "description": "I am friday the 12th",
+                "status": "Under Review",
+                "color": "#555599",
+                "channel": "1254482065617981511",
+                "tags": [
+                    {
+                        "name": "Like",
+                        "emote": "⬆️"
+                    },
+                    {
+                        "name": "Dislike",
+                        "emote": "⬇️"
+                    }
+                ],
+                "user": "1225628518021599264",
+                "reactionInfo": "\n⬆️ Like\n⬇️ Dislike"
+            }
+        ],
+        "setallowcustomoptions": false
     }
 }

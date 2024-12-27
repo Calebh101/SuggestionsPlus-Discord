@@ -2,3 +2,6 @@ node_modules
 node_modules/**
 
 .env
+
+# Stored data (will be backed up separately)
+data.json
