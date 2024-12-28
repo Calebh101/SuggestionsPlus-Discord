@@ -119,7 +119,7 @@ async function registerSlashCommands(guildId) {
             ),
         new SlashCommandBuilder()
             .setName('setcustomoptions')
-            .setDescription('Used to set how many custom options a user can add to their suggestion. 2 to 5.')
+            .setDescription('Used to set how many custom options a user can add to their suggestion.')
             .addIntegerOption(option =>
                 option.setName('amount')
                     .setDescription('2 to 5')
@@ -248,6 +248,21 @@ async function registerSlashCommands(guildId) {
             )
             .addSubcommand(subcommand =>
                 subcommand
+                    .setName('implement')
+                    .setDescription('Marks a suggestion as Implemented.')
+                    .addIntegerOption(option =>
+                        option.setName('id')
+                            .setDescription('The ID of the suggestion, not the message ID.')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('reason')
+                            .setDescription('Reason the suggestion is being marked as Implemented.')
+                            .setRequired(true)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
                     .setName('consider')
                     .setDescription('Considers a suggestion.')
                     .addIntegerOption(option =>
@@ -274,6 +289,31 @@ async function registerSlashCommands(guildId) {
                         option.setName('reason')
                             .setDescription('Reason the suggestion is being rejected.')
                             .setRequired(true)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName('custom')
+                    .setDescription('Sets a suggestion to a custom status.')
+                    .addIntegerOption(option =>
+                        option.setName('id')
+                            .setDescription('The ID of the suggestion, not the message ID.')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('reason')
+                            .setDescription('Reason the suggestion is being set to this status.')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('name')
+                            .setDescription('Custom status name. Automatically converted to Title Case.')
+                            .setRequired(true)
+                    )
+                    .addStringOption(option =>
+                        option.setName('color')
+                            .setDescription('Custom color for the status in 6-character hex format.')
+                            .setRequired(false)
                     )
             )
     ];
@@ -346,13 +386,18 @@ async function registerSlashCommands(guildId) {
             .setDescription('Submits feedback to the server.')
             .addStringOption(option =>
                 option.setName('title')
-                    .setDescription('Title for the suggestion. Make this clear and understandable.')
+                    .setDescription('Title for the feedback. Make this clear and understandable.')
                     .setRequired(true)
             )
             .addStringOption(option =>
                 option.setName('description')
-                    .setDescription('Description for the suggestion. Provide additional details.')
+                    .setDescription('Description for the feedback. Provide additional details.')
                     .setRequired(true)
+            )
+            .addIntegerOption(option =>
+                option.setName('rating')
+                    .setDescription('Rating of the server or server feature you are submitting feedback about. 0 to 5.')
+                    .setRequired(false)
             )
         );
     }
@@ -396,10 +441,10 @@ client.on('interactionCreate', async (interaction) => {
     const member = interaction.member;
     const user = interaction.user;
 
-    var adminRoles = getAdminRoles(guildId) ?? [];
     const roles = member.roles.cache;
     const roleIds = roles.map(role => role.id);
-    const isAdmin = adminRoles.some(item => roleIds.includes(item));
+    var adminRoles = getAdminRoles(guildId) ?? [];
+    var isAdmin = adminRoles.some(item => roleIds.includes(item));
 
     if (adminRoles.length > 0 && enforceAdmin) {
         isAdmin = true;
@@ -640,8 +685,9 @@ client.on('interactionCreate', async (interaction) => {
                 var feedbackChannel = await client.channels.fetch(getGuildData(guildId, "feedbackchannel"));
                 var title = interaction.options.getString("title");
                 var desc = interaction.options.getString("description");
+                var rating = interaction.options.getInteger("rating");
                 var id = (getGuildData(guildId, "currentFeedbackId") ?? 0) + 1;
-                var feedbackEmbed = getFeedbackEmbed(id, user, title, desc);
+                var feedbackEmbed = getFeedbackEmbed(id, user, title, desc, rating);
                 setGuildData(guildId, "currentFeedbackId", id);
                 await feedbackChannel.send({embeds: [feedbackEmbed]});
                 await interaction.editReply("Created feedback #" + id + "!");
@@ -649,7 +695,7 @@ client.on('interactionCreate', async (interaction) => {
 
             case 'suggest':
                 const rootChannel = await client.channels.fetch(getGuildData(guildId, "channel"));
-                const defaultTags = getGuildData(guildId, "defaultTags") ?? defaultTagsS;
+                const defaultTags = JSON.parse(getGuildData(guildId, "defaultTags")) ?? defaultTagsS;
                 var tags = [];
                 var title = interaction.options.getString("title");
                 var desc = interaction.options.getString("description");
@@ -696,6 +742,7 @@ client.on('interactionCreate', async (interaction) => {
                     tags = defaultTags;
                 }
 
+                console.log("tags (" + typeof tags + "): ", tags);
                 tags.forEach(tag => {
                     tagInfo += "\n" + tag.emote + " " + tag.name;
                 });
@@ -764,6 +811,25 @@ client.on('interactionCreate', async (interaction) => {
                     case 'inprogress':
                         await edit(guildId, "In Progress", defaultColor, user, interaction);
                         break;
+                    
+                    case 'implement':
+                        await edit(guildId, "Implemented", "44AA44", user, interaction);
+                        break;
+                    
+                    case 'custom':
+                        const customName = toTitleCase(interaction.options.getString('name'));
+                        const customColor = formatColor(interaction.options.getString('color') ?? defaultColor);
+                        var newCustomColor = defaultColor;
+                        console.log("color: " + customColor);
+                        if (isValidHexColor(customColor)) {
+                            console.log("color is valid");
+                            newCustomColor = customColor;
+                        } else {
+                            console.log("color is not valid");
+                            newCustomColor = defaultColor;
+                        }
+                        await edit(guildId, customName, newCustomColor, user, interaction);
+                        break;
                 }
                 break;
     
@@ -797,6 +863,25 @@ function isValidEmoji(string) {
     }
 }
 
+function toTitleCase(str) {
+    return str
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+}
+
+function isValidHexColor(str) {
+    const regex = /^[0-9A-Fa-f]{6}$/;
+    return regex.test(str);
+}
+
+function formatColor(str) {
+    const alphanumericOnly = str.replace(/[^a-zA-Z0-9]/g, '');
+    const capitalized = alphanumericOnly.toUpperCase();
+    return capitalized;
+}
+
 function isValidEmojiFormat(string) {
     const regex = /^<:\w+:\d+>$/;
     return regex.test(string);
@@ -812,11 +897,25 @@ function getEmbed(id, user, title, desc, status, color) {
         .setTimestamp();
 }
 
-function getFeedbackEmbed(id, user, title, desc) {
+function getFeedbackEmbed(id, user, title, desc, rating) {
+    var ratingText = '';
+    var ratingStars = '';
+
+    if (rating !== null && rating <= 5 && rating >= 0) {
+        for (let i = 0; i < 5; i++) {
+            if (rating > i) {
+                ratingStars += '⭐';
+            } else {
+                ratingStars += '★';
+            }
+        }
+        ratingText = 'Rating: ' + rating + '/5 ' + ratingStars + '\n\n';
+    }
+
     return new EmbedBuilder()
         .setColor(defaultColor)
         .setTitle('Feedback #' + id + " by " + user.toString() + "\n" + title)
-        .setDescription(desc)
+        .setDescription(ratingText + desc)
         .setThumbnail(user.displayAvatarURL())
         .setFooter({ text: 'Feedback #' + id + " by user #" + user.id, iconURL: 'https://example.com/icon.png' })
         .setTimestamp();
