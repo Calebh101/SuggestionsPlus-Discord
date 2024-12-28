@@ -7,6 +7,9 @@ var defaultColor = '555599';
 var disabled = false;
 var disabledMessage = "Suggestions+ is currently undergoing maintenance.";
 
+var testing = true;
+var testGuilds = "1252103981380141078";
+
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 
@@ -22,452 +25,468 @@ const client = new Client({
 const adminCommands = [
     "reload",
     "adminrole",
+    "setchannel",
+    "setfeedbackchannel",
+    "allowfeedback",
+    "allowcustomoptions",
+    "setcustomoptions",
+    "defaulttags",
     "suggestion",
 ];
 
 client.once('ready', () => {
-    console.log(`Logged in as ${client.user.tag}!`);
+    console.log(`Logged in as ${client.user.tag}`);
 });
 
 client.on('guildCreate', async (guild) => {
-    console.log(`Joined a new guild: ${guild.name} (ID: ${guild.id})`);
-    
-    try {
-        await registerSlashCommands(guild.id);
-    } catch (error) {
-        console.error(`Failed to register commands for guild ${guild.id}:`, error);
-    }
+    console.log(`Joined a new guild: ${guild.name} (${guild.id}`);
+    await registerSlashCommands(guild.id);
 });
 
 async function registerSlashCommands(guildId) {
     console.log("Registering commands...");
-    setGuildData(guildId, "commandVer", commandVer);
-
-    var commandsS = [
-        new SlashCommandBuilder()
-            .setName('ping')
-            .setDescription('Pong!'),
-        new SlashCommandBuilder()
-            .setName('reload')
-            .setDescription('Reloads Suggestions+ to check for new command updates and such.'),
-        new SlashCommandBuilder()
-            .setName('adminrole')
-            .setDescription('Manage admin roles for Suggestions+.')
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('new')
-                    .setDescription('Set up a new admin role that can be used to configure Suggestions+.')  
-                    .addRoleOption(option =>
-                        option.setName('role')
-                            .setDescription('Enter a new admin role.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('list')
-                    .setDescription('List the admin roles that can be used to configure Suggestions+.')
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('clear')
-                    .setDescription('Clear all the admin roles that can be used to configure Suggestions+.')
-                    .addBooleanOption(option =>
-                        option
-                            .setName('confirm')
-                            .setDescription('Warning! This will open up all of the Suggestions+ commands to everyone!')
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('remove')
-                    .setDescription('Remove an admin role from configuring Suggestions+. Cannot be used if there is only one admin role.')
-                    .addRoleOption(option =>
-                        option.setName('role')
-                            .setDescription('Enter the admin role to remove.')
-                            .setRequired(true)
-                    )
-            ),
-        new SlashCommandBuilder()
-            .setName('setchannel')
-            .setDescription('Sets a channel for suggestions to be sent.')
-            .addChannelOption(option => 
-                option.setName('channel')
-                    .setDescription('The channel to use.')
-                    .setRequired(true)
-                    .addChannelTypes(ChannelType.GuildText)
-            ),
-        new SlashCommandBuilder()
-            .setName('setfeedbackchannel')
-            .setDescription('Sets a channel for private feedback to be sent.')
-            .addChannelOption(option => 
-                option.setName('channel')
-                    .setDescription('The channel to use.')
-                    .setRequired(true)
-                    .addChannelTypes(ChannelType.GuildText)
-            ),
-        new SlashCommandBuilder()
-            .setName('allowcustomoptions')
-            .setDescription('Used to allow or deny users\' ability to set custom options for their suggestions.')
-            .addBooleanOption(option =>
-                option.setName('allow')
-                    .setDescription('Description: Brother you just read it')
-                    .setRequired(true)
-            ),
-        new SlashCommandBuilder()
-            .setName('allowfeedback')
-            .setDescription('Used to allow or deny users\' ability to send (private) feedback on the server.')
-            .addBooleanOption(option =>
-                option.setName('allow')
-                    .setDescription('Description: Brother you just read it')
-                    .setRequired(true)
-            ),
-        new SlashCommandBuilder()
-            .setName('setcustomoptions')
-            .setDescription('Used to set how many custom options a user can add to their suggestion.')
-            .addIntegerOption(option =>
-                option.setName('amount')
-                    .setDescription('2 to 5')
-                    .setRequired(true)
-            ),
-        new SlashCommandBuilder()
-            .setName('defaulttags')
-            .setDescription('Manage the default options for a suggestion.')
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('set')
-                    .setDescription('Set the default tags.')
-                    .addStringOption(option =>
-                        option.setName('option1')
-                            .setDescription('A default option for suggestions.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('option2')
-                            .setDescription('A default option for suggestions.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('option3')
-                            .setDescription('A default option for suggestions.')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('option4')
-                            .setDescription('A default option for suggestions.')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('option5')
-                            .setDescription('A default option for suggestions.')
-                            .setRequired(false)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('emote')
-                    .setDescription('Set the default tags emotes.')
-                    .addStringOption(option =>
-                        option.setName('emote1')
-                            .setDescription('A default emote for option 1 for suggestions.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('emote2')
-                            .setDescription('A default emote for option 2 for suggestions.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('emote3')
-                            .setDescription('A default emote for option 3 for suggestions.')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('emote4')
-                            .setDescription('A default emote for option 4 for suggestions.')
-                            .setRequired(false)
-                    )
-                    .addStringOption(option =>
-                        option.setName('emote5')
-                            .setDescription('A default emote for option 5 for suggestions.')
-                            .setRequired(false)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('reset')
-                    .setDescription('Reset the default tags.')
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('view')
-                    .setDescription('View the default tags.')
-            ),
-        new SlashCommandBuilder()
-            .setName('suggestion')
-            .setDescription('Manage suggestions.')
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('deny')
-                    .setDescription('Denies a suggestion. For suggestions that are valid yet are being denied.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being denied.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('approve')
-                    .setDescription('Approves a suggestion.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being approved.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('inprogress')
-                    .setDescription('Marks a suggestion as In Progress.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being marked as In Progress.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('implement')
-                    .setDescription('Marks a suggestion as Implemented.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being marked as Implemented.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('consider')
-                    .setDescription('Considers a suggestion.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being considered.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('reject')
-                    .setDescription('Rejects a suggestion. For invalid or spam suggestions.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being rejected.')
-                            .setRequired(true)
-                    )
-            )
-            .addSubcommand(subcommand =>
-                subcommand
-                    .setName('custom')
-                    .setDescription('Sets a suggestion to a custom status.')
-                    .addIntegerOption(option =>
-                        option.setName('id')
-                            .setDescription('The ID of the suggestion, not the message ID.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('reason')
-                            .setDescription('Reason the suggestion is being set to this status.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('name')
-                            .setDescription('Custom status name. Automatically converted to Title Case.')
-                            .setRequired(true)
-                    )
-                    .addStringOption(option =>
-                        option.setName('color')
-                            .setDescription('Custom color for the status in 6-character hex format.')
-                            .setRequired(false)
-                    )
-            )
-    ];
-
-    if (getGuildData(guildId, "setallowcustomoptions") ?? true) {
-        var suggestCommand = new SlashCommandBuilder()
-            .setName('suggest')
-            .setDescription('Creates a new suggestion.')
-            .addStringOption(option =>
-                option.setName('title')
-                    .setDescription('Title for the suggestion. Make this clear and understandable.')
-                    .setRequired(true)
-            )
-            .addStringOption(option =>
-                option.setName('description')
-                    .setDescription('Description for the suggestion. Provide additional details.')
-                    .setRequired(true)
-            );
-    } else {
-        var allowedOptions = getGuildData(guildId, "optionsamount") ?? 3;
-        var suggestCommand = new SlashCommandBuilder()
-            .setName('suggest')
-            .setDescription('Creates a new suggestion.')
-            .addStringOption(option =>
-                option.setName('title')
-                    .setDescription('Title for the suggestion. Make this clear and understandable.')
-                    .setRequired(true)
-            )
-            .addStringOption(option =>
-                option.setName('description')
-                    .setDescription('Description for the suggestion. Provide additional details.')
-                    .setRequired(true)
-            )
-            .addStringOption(option =>
-                option.setName('option1')
-                    .setDescription('First custom option.')
-                    .setRequired(false)
-            )
-            .addStringOption(option =>
-                option.setName('option2')
-                    .setDescription('Second custom option.')
-                    .setRequired(false)
-            );
-        if (allowedOptions >= 3) {
-            suggestCommand.addStringOption(option =>
-                option.setName('option3')
-                    .setDescription('Third custom option.')
-                    .setRequired(false)
-            );
-        }
-        if (allowedOptions >= 4) {
-            suggestCommand.addStringOption(option =>
-                option.setName('option4')
-                    .setDescription('Fourth custom option.')
-                    .setRequired(false)
-            );
-        }
-        if (allowedOptions >= 5) {
-            suggestCommand.addStringOption(option =>
-                option.setName('option5')
-                    .setDescription('Fifth custom option.')
-                    .setRequired(false)
-            );
-        }
-    }
-
-    if (getGuildData(guildId, "allowfeedback") ?? true) {
-        commandsS.push(new SlashCommandBuilder()
-            .setName('feedback')
-            .setDescription('Submits feedback to the server.')
-            .addStringOption(option =>
-                option.setName('title')
-                    .setDescription('Title for the feedback. Make this clear and understandable.')
-                    .setRequired(true)
-            )
-            .addStringOption(option =>
-                option.setName('description')
-                    .setDescription('Description for the feedback. Provide additional details.')
-                    .setRequired(true)
-            )
-            .addIntegerOption(option =>
-                option.setName('rating')
-                    .setDescription('Rating of the server or server feature you are submitting feedback about. 0 to 5.')
-                    .setRequired(false)
-            )
-        );
-    }
-
-    commandsS.push(suggestCommand);
-    const commands = commandsS.map(command => command.toJSON());
-    const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
-
-    console.log(`Registering commands for guild ID: ${guildId}`);
-    console.log(`Client ID: ${process.env.APPID}`);
-
     try {
+        setGuildData(guildId, "commandVer", commandVer);
+        var commandsS = [
+            new SlashCommandBuilder()
+                .setName('ping')
+                .setDescription('Pong!'),
+            new SlashCommandBuilder()
+                .setName('reload')
+                .setDescription('Reloads Suggestions+ to check for new command updates and such.'),
+            new SlashCommandBuilder()
+                .setName('adminrole')
+                .setDescription('Manage admin roles for Suggestions+.')
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('new')
+                        .setDescription('Set up a new admin role that can be used to configure Suggestions+.')  
+                        .addRoleOption(option =>
+                            option.setName('role')
+                                .setDescription('Enter a new admin role.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('list')
+                        .setDescription('List the admin roles that can be used to configure Suggestions+.')
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('clear')
+                        .setDescription('Clear all the admin roles that can be used to configure Suggestions+.')
+                        .addBooleanOption(option =>
+                            option
+                                .setName('confirm')
+                                .setDescription('Warning! This will open up all of the Suggestions+ commands to everyone!')
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('remove')
+                        .setDescription('Remove an admin role from configuring Suggestions+. Cannot be used if there is only one admin role.')
+                        .addRoleOption(option =>
+                            option.setName('role')
+                                .setDescription('Enter the admin role to remove.')
+                                .setRequired(true)
+                        )
+                ),
+            new SlashCommandBuilder()
+                .setName('setchannel')
+                .setDescription('Sets a channel for suggestions to be sent.')
+                .addChannelOption(option => 
+                    option.setName('channel')
+                        .setDescription('The channel to use.')
+                        .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildText)
+                ),
+            new SlashCommandBuilder()
+                .setName('setfeedbackchannel')
+                .setDescription('Sets a channel for private feedback to be sent.')
+                .addChannelOption(option => 
+                    option.setName('channel')
+                        .setDescription('The channel to use.')
+                        .setRequired(true)
+                        .addChannelTypes(ChannelType.GuildText)
+                ),
+            new SlashCommandBuilder()
+                .setName('allowcustomoptions')
+                .setDescription('Used to allow or deny users\' ability to set custom options for their suggestions.')
+                .addBooleanOption(option =>
+                    option.setName('allow')
+                        .setDescription('Description: Brother you just read it')
+                        .setRequired(true)
+                ),
+            new SlashCommandBuilder()
+                .setName('allowfeedback')
+                .setDescription('Used to allow or deny users\' ability to send (private) feedback on the server.')
+                .addBooleanOption(option =>
+                    option.setName('allow')
+                        .setDescription('Description: Brother you just read it')
+                        .setRequired(true)
+                ),
+            new SlashCommandBuilder()
+                .setName('setcustomoptions')
+                .setDescription('Used to set how many custom options a user can add to their suggestion.')
+                .addIntegerOption(option =>
+                    option.setName('amount')
+                        .setDescription('2 to 5')
+                        .setRequired(true)
+                ),
+            new SlashCommandBuilder()
+                .setName('excludebotvote')
+                .setDescription('Exclude or include the bot vote in the final result. Default is true.')
+                .addBooleanOption(option =>
+                    option.setName('exclude')
+                        .setDescription('True: exclude the bot vote; False: include the bot vote')
+                        .setRequired(true)
+                ),
+            new SlashCommandBuilder()
+                .setName('defaulttags')
+                .setDescription('Manage the default options for a suggestion.')
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('set')
+                        .setDescription('Set the default tags.')
+                        .addStringOption(option =>
+                            option.setName('option1')
+                                .setDescription('A default option for suggestions.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('option2')
+                                .setDescription('A default option for suggestions.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('option3')
+                                .setDescription('A default option for suggestions.')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('option4')
+                                .setDescription('A default option for suggestions.')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('option5')
+                                .setDescription('A default option for suggestions.')
+                                .setRequired(false)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('emote')
+                        .setDescription('Set the default tags emotes.')
+                        .addStringOption(option =>
+                            option.setName('emote1')
+                                .setDescription('A default emote for option 1 for suggestions.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('emote2')
+                                .setDescription('A default emote for option 2 for suggestions.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('emote3')
+                                .setDescription('A default emote for option 3 for suggestions.')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('emote4')
+                                .setDescription('A default emote for option 4 for suggestions.')
+                                .setRequired(false)
+                        )
+                        .addStringOption(option =>
+                            option.setName('emote5')
+                                .setDescription('A default emote for option 5 for suggestions.')
+                                .setRequired(false)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('reset')
+                        .setDescription('Reset the default tags.')
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('view')
+                        .setDescription('View the default tags.')
+                ),
+            new SlashCommandBuilder()
+                .setName('suggestion')
+                .setDescription('Manage suggestions.')
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('deny')
+                        .setDescription('Denies a suggestion. For suggestions that are valid yet are being denied.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being denied.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('approve')
+                        .setDescription('Approves a suggestion.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being approved.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('inprogress')
+                        .setDescription('Marks a suggestion as In Progress.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being marked as In Progress.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('implement')
+                        .setDescription('Marks a suggestion as Implemented.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being marked as Implemented.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('consider')
+                        .setDescription('Considers a suggestion.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being considered.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('reject')
+                        .setDescription('Rejects a suggestion. For invalid or spam suggestions.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being rejected.')
+                                .setRequired(true)
+                        )
+                )
+                .addSubcommand(subcommand =>
+                    subcommand
+                        .setName('custom')
+                        .setDescription('Sets a suggestion to a custom status.')
+                        .addIntegerOption(option =>
+                            option.setName('id')
+                                .setDescription('The ID of the suggestion, not the message ID.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('reason')
+                                .setDescription('Reason the suggestion is being set to this status.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('name')
+                                .setDescription('Custom status name. Automatically converted to Title Case.')
+                                .setRequired(true)
+                        )
+                        .addStringOption(option =>
+                            option.setName('color')
+                                .setDescription('Custom color for the status in 6-character hex format.')
+                                .setRequired(false)
+                        )
+                )
+        ];
+
+        if (getGuildData(guildId, "setallowcustomoptions") ?? true) {
+            var suggestCommand = new SlashCommandBuilder()
+                .setName('suggest')
+                .setDescription('Creates a new suggestion.')
+                .addStringOption(option =>
+                    option.setName('title')
+                        .setDescription('Title for the suggestion. Make this clear and understandable.')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('description')
+                        .setDescription('Description for the suggestion. Provide additional details.')
+                        .setRequired(true)
+                );
+        } else {
+            var allowedOptions = getGuildData(guildId, "optionsamount") ?? 3;
+            var suggestCommand = new SlashCommandBuilder()
+                .setName('suggest')
+                .setDescription('Creates a new suggestion.')
+                .addStringOption(option =>
+                    option.setName('title')
+                        .setDescription('Title for the suggestion. Make this clear and understandable.')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('description')
+                        .setDescription('Description for the suggestion. Provide additional details.')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('option1')
+                        .setDescription('First custom option.')
+                        .setRequired(false)
+                )
+                .addStringOption(option =>
+                    option.setName('option2')
+                        .setDescription('Second custom option.')
+                        .setRequired(false)
+                );
+            if (allowedOptions >= 3) {
+                suggestCommand.addStringOption(option =>
+                    option.setName('option3')
+                        .setDescription('Third custom option.')
+                        .setRequired(false)
+                );
+            }
+            if (allowedOptions >= 4) {
+                suggestCommand.addStringOption(option =>
+                    option.setName('option4')
+                        .setDescription('Fourth custom option.')
+                        .setRequired(false)
+                );
+            }
+            if (allowedOptions >= 5) {
+                suggestCommand.addStringOption(option =>
+                    option.setName('option5')
+                        .setDescription('Fifth custom option.')
+                        .setRequired(false)
+                );
+            }
+        }
+
+        if (getGuildData(guildId, "allowfeedback") ?? true) {
+            commandsS.push(new SlashCommandBuilder()
+                .setName('feedback')
+                .setDescription('Submits feedback to the server.')
+                .addStringOption(option =>
+                    option.setName('title')
+                        .setDescription('Title for the feedback. Make this clear and understandable.')
+                        .setRequired(true)
+                )
+                .addStringOption(option =>
+                    option.setName('description')
+                        .setDescription('Description for the feedback. Provide additional details.')
+                        .setRequired(true)
+                )
+                .addIntegerOption(option =>
+                    option.setName('rating')
+                        .setDescription('Rating of the server or server feature you are submitting feedback about. 0 to 5.')
+                        .setRequired(false)
+                )
+            );
+        }
+
+        commandsS.push(suggestCommand);
+        const commands = commandsS.map(command => command.toJSON());
+        const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+        console.log(`Registering commands for guild ID: ${guildId}`);
+        console.log(`Client ID: ${process.env.APPID}`);
+
         await rest.put(
             Routes.applicationGuildCommands(process.env.APPID, guildId),
             { body: commands }
         );
-        console.log(`Successfully registered commands for guild ID: ${guildId}`);
+        console.log(`Commands registered for guild: ${guildId}`);
     } catch (error) {
-        console.error(`Error registering commands for guild ID ${guildId}:`, error);
+        console.error(`Commands not registered for guild: ${guildId}:\n`, error.stack);
     }
 }
 
 client.on('interactionCreate', async (interaction) => {
     console.log("Responding...");
-    const { commandName, options, guildId } = interaction;
-    const commandVerS = getGuildData(guildId, "commandVer") ?? 'unknown';
-
-    const defaultTagsS = [
-        {
-            "name": "Like",
-            "emote": "⬆️",
-        },
-        {
-            "name": "Dislike",
-            "emote": "⬇️",
-        },
-    ];
-
-    var subcommand = 'none';
-    console.log("Command: /" + commandName);
-    const member = interaction.member;
-    const user = interaction.user;
-
-    const roles = member.roles.cache;
-    const roleIds = roles.map(role => role.id);
-    var adminRoles = getAdminRoles(guildId) ?? [];
-    var isAdmin = adminRoles.some(item => roleIds.includes(item));
-
-    if (adminRoles.length === 0 || !enforceAdmin) {
-        isAdmin = true;
-    }
-
-    refresh(guildId);
-    if (!interaction.isCommand()) return;
-
-    console.log("user admin: " + isAdmin);
-    await interaction.reply("Loading...");
-
-    if (disabled) {
-        console.log("bot disabled");
-        await interaction.editReply(disabledMessage);
-        return;
-    }
-
     try {
+        const { commandName, options, guildId, guild } = interaction;
+        const commandVerS = getGuildData(guildId, "commandVer") ?? 'unknown';
+
+        if (testing) {
+            if (!testGuilds.includes(guildId)) {
+                console.log("Bot disabled");
+                await interaction.reply('This bot has been disabled for maintenance.');
+                return;
+            }
+        }
+
+        const defaultTagsS = [
+            {
+                "name": "Like",
+                "emote": "⬆️",
+            },
+            {
+                "name": "Dislike",
+                "emote": "⬇️",
+            },
+        ];
+
+        var subcommand = 'none';
+        console.log("Command: /" + commandName);
+        const member = interaction.member;
+        const user = interaction.user;
+
+        const roles = member.roles.cache;
+        const roleIds = roles.map(role => role.id);
+        var adminRoles = getAdminRoles(guildId) ?? [];
+        var isAdmin = adminRoles.some(item => roleIds.includes(item));
+
+        if (adminRoles.length === 0 || !enforceAdmin) {
+            isAdmin = true;
+        }
+
+        refresh(guildId);
+        if (!interaction.isCommand()) return;
+
+        console.log("user admin: " + isAdmin);
+        await interaction.reply("Loading...");
+
+        if (disabled) {
+            console.log("bot disabled");
+            await interaction.editReply(disabledMessage);
+            return;
+        }
+
         if (adminCommands.includes(commandName)) {
             if (adminRoles.length > 0 && enforceAdmin) {
                 if (!isAdmin) {
@@ -479,8 +498,9 @@ client.on('interactionCreate', async (interaction) => {
             }
         }
 
-        if (commandVerS !== productVer && isAdmin) {
-            await interaction.channel.send('New command update available: ' + commandVerS + '\nRun /reload to use it!')
+        if (commandVerS !== productVer && isAdmin && commandName !== "reload") {
+            console.log("command version: " + commandVer, + ',' + commandVerS, + ',' + commandVerS !== productVer)
+            await interaction.channel.send('New command update available: ' + commandVer + '\nRun /reload to use it!')
         }
 
         switch (commandName) {
@@ -535,6 +555,15 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.editReply('Set custom options amount to ' + interaction.options.getInteger('amount') + ' options!');
                 break;
 
+            case 'excludebotvote':
+                setGuildData(guildId, "excludebot", interaction.options.getBoolean('exclude'));
+                if (interaction.options.getBoolean('exclude')) {
+                    await interaction.editReply('Now excluding the bot vote!');
+                } else {
+                    await interaction.editReply('Now including the bot vote!');
+                }
+                break;
+
             case 'defaulttags':
                 subcommand = options.getSubcommand();
                 switch(subcommand) {
@@ -575,16 +604,16 @@ client.on('interactionCreate', async (interaction) => {
                         }
 
                         setGuildData(guildId, "defaultTags", tags);
-                        await interaction.editReply('Default tags now set to:\n```' + JSON.stringify(tags) + '```\nTo change the emojis, please run /defaulttags emote.');
+                        await interaction.editReply(viewTags(tags));
                         break;
                     case 'view':
-                        var tags = JSON.stringify(getGuildData(guildId, "defaultTags") ?? defaultTagsS);
-                        await interaction.editReply('Default tags set to:\n```' + tags + '```');
+                        var tags = getGuildData(guildId, "defaultTags") ?? defaultTagsS;
+                        await interaction.editReply(viewTags(tags));
                         break;
                     case 'reset':
-                        var tags = JSON.stringify(defaultTagsS);
+                        var tags = defaultTagsS;
                         setGuildData(guildId, "defaultTags", tags);
-                        await interaction.editReply('Default tags now set to:\n```' + tags + '```');
+                        await interaction.editReply(viewTags(tags));
                     case 'emote':
                         var tags = getGuildData(guildId, "defaultTags") ?? defaultTagsS;
                         const emote1 = interaction.options.getString('emote1');
@@ -609,7 +638,7 @@ client.on('interactionCreate', async (interaction) => {
                             tags[4].emote = emote5;
                         }
                         setGuildData(guildId, "defaultTags", tags);
-                        await interaction.editReply('Default tags now set to:\n' + JSON.stringify(tags));
+                        await interaction.editReply(viewTags(tags));
                 }
                 break;
         
@@ -715,7 +744,7 @@ client.on('interactionCreate', async (interaction) => {
                 }
 
                 const rootChannel = await client.channels.fetch(getGuildData(guildId, "channel"));
-                const defaultTags = JSON.parse(getGuildData(guildId, "defaultTags")) ?? defaultTagsS;
+                const defaultTags = getGuildData(guildId, "defaultTags") ?? defaultTagsS;
                 var tags = [];
                 var title = interaction.options.getString("title");
                 var desc = interaction.options.getString("description");
@@ -764,7 +793,14 @@ client.on('interactionCreate', async (interaction) => {
 
                 console.log("tags (" + typeof tags + "): ", tags);
                 tags.forEach(tag => {
-                    tagInfo += "\n" + tag.emote + " " + tag.name;
+                    const emojiId = tag.emote.match(/\d+/)?.[0];
+                    const emoji = guild.emojis.cache.get(emojiId);
+                    if (emoji) {
+                        tagInfo += "\n" + tag.emote + " " + tag.name;
+                    } else {
+                        console.log("tagInfo: emoji doesn't exist: " + emoji);
+                        tagInfo += "\n❓ " + tag.name;
+                    }
                 });
 
                 const status = "Under Review";
@@ -778,7 +814,14 @@ client.on('interactionCreate', async (interaction) => {
                 
                 var message = await rootChannel.send({ embeds: [embed] });
                 tags.forEach(tag => {
-                    message.react(tag.emote);
+                    const emojiId = tag.emote.match(/\d+/)?.[0];
+                    const emoji = guild.emojis.cache.get(emojiId);
+                    if (emoji) {
+                        message.react(tag.emote);
+                    } else {
+                        console.log("message.react: emoji doesn't exist: " + emoji);
+                        message.react("❓");
+                    }
                 });
 
                 var suggestionsList = getGuildData(guildId, "suggestions") ?? [];
@@ -854,11 +897,19 @@ client.on('interactionCreate', async (interaction) => {
         if (isAdmin) {
             await interaction.editReply('Error! ' + e);
         } else {
-            await interaction.editReply('Error!');
+            await interaction.editReply('There was an unexpected error running the command.');
         }
     }
     console.log("Interaction complete");
 });
+
+function viewTags(tags) {
+    var tagText = 'Tags set to:';
+    tags.forEach(item => {
+        tagText += '\n' + item.emote + ' ' + item.name;
+    });
+    return tagText;
+}
 
 function isSingleCharacterEmoji(string) {
     if (string === null) {return false;}
@@ -951,8 +1002,8 @@ async function setStatus(guildId, id, status, color, reason, user, channel) {
                 var tag = tags[i];
                 var reaction = reactions[i];
                 var count = reaction.count;
-                if (count < 0) {
-                    return;
+                if (getGuildData(guildId, "excludebot")) {
+                    count = count - 1;
                 }
                 reactionInfo += "\n" + tag.emote + " " + tag.name + ': ' + count;
             }
@@ -1026,10 +1077,14 @@ function getGuildData(guildId, key) {
     }
 }
 
+function resetGuildData(guildId) {
+    guildData[guildId] = {};
+}
+
 function defaultGuildData(guildId) {
     if (!guildData[guildId]) {
         guildData[guildId] = {
-            "adminSetup": false,
+            "setup": true,
         };
         saveData();
     }
