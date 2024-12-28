@@ -4,6 +4,9 @@ var commandVer = "0.0.0B";
 var enforceAdmin = true;
 var defaultColor = '555599';
 
+var disabled = false;
+var disabledMessage = "Suggestions+ is currently undergoing maintenance.";
+
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 
@@ -448,7 +451,7 @@ client.on('interactionCreate', async (interaction) => {
     var adminRoles = getAdminRoles(guildId) ?? [];
     var isAdmin = adminRoles.some(item => roleIds.includes(item));
 
-    if (adminRoles.length > 0 && enforceAdmin) {
+    if (adminRoles.length === 0 || !enforceAdmin) {
         isAdmin = true;
     }
 
@@ -458,11 +461,17 @@ client.on('interactionCreate', async (interaction) => {
     console.log("user admin: " + isAdmin);
     await interaction.reply("Loading...");
 
+    if (disabled) {
+        console.log("bot disabled");
+        await interaction.editReply(disabledMessage);
+        return;
+    }
+
     try {
         if (adminCommands.includes(commandName)) {
             if (adminRoles.length > 0 && enforceAdmin) {
                 if (!isAdmin) {
-                    await interaction.editReply('This command requires an administrative privilege.');
+                    await interaction.editReply('This command requires administrative privileges.');
                     return;
                 }
             } else {
@@ -677,7 +686,7 @@ client.on('interactionCreate', async (interaction) => {
             case 'feedback':
                 if (!getGuildData(guildId, "feedbackchannel")) {
                     if (isAdmin) {
-                        await interaction.editReply('Please a specify a channel with /setchannel first.');
+                        await interaction.editReply('Please a specify a channel with /setfeedbackchannel first.');
                     } else {
                         await interaction.editReply('No channel specified!');
                     }
@@ -696,6 +705,15 @@ client.on('interactionCreate', async (interaction) => {
                 break;
 
             case 'suggest':
+                if (!getGuildData(guildId, "channel")) {
+                    if (isAdmin) {
+                        await interaction.editReply('Please a specify a channel with /setchannel first.');
+                    } else {
+                        await interaction.editReply('No channel specified!');
+                    }
+                    return;
+                }
+
                 const rootChannel = await client.channels.fetch(getGuildData(guildId, "channel"));
                 const defaultTags = JSON.parse(getGuildData(guildId, "defaultTags")) ?? defaultTagsS;
                 var tags = [];
@@ -752,15 +770,6 @@ client.on('interactionCreate', async (interaction) => {
                 const status = "Under Review";
                 const color = defaultColor;
                 const embed = getEmbed(id, user, title, desc  + '\n' + tagInfo, status, color);
-
-                if (!rootChannel) {
-                    if (isAdmin) {
-                        await interaction.editReply('Please a specify a channel with /setchannel first.');
-                    } else {
-                        await interaction.editReply('No channel specified!');
-                    }
-                    return;
-                }
 
                 if (tags.length < 2) {
                     await interaction.editReply('Please specify at least 2 options for your suggestion.');
