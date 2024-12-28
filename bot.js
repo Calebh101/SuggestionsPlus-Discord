@@ -1,3 +1,9 @@
+console.log("Starting...");
+var productVer = "0.0.0B";
+var commandVer = "0.0.0B";
+var enforceAdmin = true;
+var defaultColor = '555599';
+
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 
@@ -10,9 +16,6 @@ const adminCommands = [
     "adminrole",
     "suggestion",
 ];
-
-console.log("Starting...");
-var enforceAdmin = true; // Only set to false for debugging purposes
 
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
@@ -33,6 +36,7 @@ client.on('guildCreate', async (guild) => {
 // Function to register slash commands for a specific guild
 async function registerSlashCommands(guildId) {
     console.log("Registering commands...");
+    setGuildData(guildId, "commandVer", commandVer);
 
     var commandsS = [
         new SlashCommandBuilder()
@@ -41,7 +45,7 @@ async function registerSlashCommands(guildId) {
         new SlashCommandBuilder()
             .setName('reload')
             .setDescription('Reloads Suggestions+ to check for new command updates and such.'),
-            new SlashCommandBuilder()
+        new SlashCommandBuilder()
             .setName('adminrole')
             .setDescription('Manage admin roles for Suggestions+.')
             .addSubcommand(subcommand =>
@@ -89,11 +93,36 @@ async function registerSlashCommands(guildId) {
                     .addChannelTypes(ChannelType.GuildText)
             ),
         new SlashCommandBuilder()
-            .setName('setallowcustomoptions')
+            .setName('setfeedbackchannel')
+            .setDescription('Sets a channel for private feedback to be sent.')
+            .addChannelOption(option => 
+                option.setName('channel')
+                    .setDescription('The channel to use.')
+                    .setRequired(true)
+                    .addChannelTypes(ChannelType.GuildText)
+            ),
+        new SlashCommandBuilder()
+            .setName('allowcustomoptions')
             .setDescription('Used to allow or deny users\' ability to set custom options for their suggestions.')
             .addBooleanOption(option =>
                 option.setName('allow')
                     .setDescription('Description: Brother you just read it')
+                    .setRequired(true)
+            ),
+        new SlashCommandBuilder()
+            .setName('allowfeedback')
+            .setDescription('Used to allow or deny users\' ability to send (private) feedback on the server.')
+            .addBooleanOption(option =>
+                option.setName('allow')
+                    .setDescription('Description: Brother you just read it')
+                    .setRequired(true)
+            ),
+        new SlashCommandBuilder()
+            .setName('setcustomoptions')
+            .setDescription('Used to set how many custom options a user can add to their suggestion. 2 to 5.')
+            .addIntegerOption(option =>
+                option.setName('amount')
+                    .setDescription('2 to 5')
                     .setRequired(true)
             ),
         new SlashCommandBuilder()
@@ -250,7 +279,7 @@ async function registerSlashCommands(guildId) {
     ];
 
     if (getGuildData(guildId, "setallowcustomoptions") ?? true) {
-        commandsS.push(new SlashCommandBuilder()
+        var suggestCommand = new SlashCommandBuilder()
             .setName('suggest')
             .setDescription('Creates a new suggestion.')
             .addStringOption(option =>
@@ -262,10 +291,10 @@ async function registerSlashCommands(guildId) {
                 option.setName('description')
                     .setDescription('Description for the suggestion. Provide additional details.')
                     .setRequired(true)
-            )
-        );
+            );
     } else {
-        commandsS.push(new SlashCommandBuilder()
+        var allowedOptions = getGuildData(guildId, "optionsamount") ?? 3;
+        var suggestCommand = new SlashCommandBuilder()
             .setName('suggest')
             .setDescription('Creates a new suggestion.')
             .addStringOption(option =>
@@ -278,24 +307,57 @@ async function registerSlashCommands(guildId) {
                     .setDescription('Description for the suggestion. Provide additional details.')
                     .setRequired(true)
             )
-            .addStringOption(option => 
+            .addStringOption(option =>
                 option.setName('option1')
                     .setDescription('First custom option.')
                     .setRequired(false)
             )
-            .addStringOption(option => 
+            .addStringOption(option =>
                 option.setName('option2')
                     .setDescription('Second custom option.')
                     .setRequired(false)
-            )
-            .addStringOption(option => 
+            );
+        if (allowedOptions >= 3) {
+            suggestCommand.addStringOption(option =>
                 option.setName('option3')
                     .setDescription('Third custom option.')
                     .setRequired(false)
+            );
+        }
+        if (allowedOptions >= 4) {
+            suggestCommand.addStringOption(option =>
+                option.setName('option4')
+                    .setDescription('Fourth custom option.')
+                    .setRequired(false)
+            );
+        }
+        if (allowedOptions >= 5) {
+            suggestCommand.addStringOption(option =>
+                option.setName('option5')
+                    .setDescription('Fifth custom option.')
+                    .setRequired(false)
+            );
+        }
+    }
+
+    if (getGuildData(guildId, "allowfeedback") ?? true) {
+        commandsS.push(new SlashCommandBuilder()
+            .setName('feedback')
+            .setDescription('Submits feedback to the server.')
+            .addStringOption(option =>
+                option.setName('title')
+                    .setDescription('Title for the suggestion. Make this clear and understandable.')
+                    .setRequired(true)
+            )
+            .addStringOption(option =>
+                option.setName('description')
+                    .setDescription('Description for the suggestion. Provide additional details.')
+                    .setRequired(true)
             )
         );
     }
 
+    commandsS.push(suggestCommand);
     const commands = commandsS.map(command => command.toJSON());
     const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
@@ -316,15 +378,16 @@ async function registerSlashCommands(guildId) {
 client.on('interactionCreate', async (interaction) => {
     console.log("Responding...");
     const { commandName, options, guildId } = interaction;
+    const commandVerS = getGuildData(guildId, "commandVer") ?? 'unknown';
 
     const defaultTagsS = [
         {
             "name": "Like",
-            "emote": getGuildData(guildId, "up") ?? "⬆️",
+            "emote": "⬆️",
         },
         {
             "name": "Dislike",
-            "emote": getGuildData(guildId, "down") ?? "⬇️",
+            "emote": "⬇️",
         },
     ];
 
@@ -337,17 +400,20 @@ client.on('interactionCreate', async (interaction) => {
     const roles = member.roles.cache;
     const roleIds = roles.map(role => role.id);
     const isAdmin = adminRoles.some(item => roleIds.includes(item));
-    console.log("Admin: " + isAdmin);
+
+    if (adminRoles.length > 0 && enforceAdmin) {
+        isAdmin = true;
+    }
 
     refresh(guildId);
     if (!interaction.isCommand()) return;
 
+    console.log("user admin: " + isAdmin);
     await interaction.reply("Loading...");
 
     try {
         if (adminCommands.includes(commandName)) {
             if (adminRoles.length > 0 && enforceAdmin) {
-                console.log("requires admin: true\nuser admin: " + isAdmin);
                 if (!isAdmin) {
                     await interaction.editReply('This command requires an administrative privilege.');
                     return;
@@ -355,8 +421,10 @@ client.on('interactionCreate', async (interaction) => {
             } else {
                 await interaction.channel.send('Warning! Allowing all commands to be run regardless of the user role! To change this, please run /adminrole new.');
             }
-        } else {
-            console.log("requires admin: false\nuser admin: null");
+        }
+
+        if (commandVerS !== productVer && isAdmin) {
+            await interaction.channel.send('New command update available: ' + commandVerS + '\nRun /reload to use it!')
         }
 
         switch (commandName) {
@@ -370,7 +438,7 @@ client.on('interactionCreate', async (interaction) => {
                     .setDescription("Suggestions+ is a Discord bot that allows for custom suggestions to be inputted by users. To use, type `/suggest <suggestion>` to input a suggestion. If you want to add custom options to your suggestion, type `/suggest <suggestion> <option 1> <option 2> <option 3 (optional)>`.")
                     .setThumbnail('https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon.png')
                     .setTimestamp()
-                    .setFooter({ text: 'Version ' + process.env.VERSION, icon: "https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon-transparent.png" });
+                    .setFooter({ text: 'Version ' + productVer + ' (command version ' + commandVerS + ')', icon: "https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon-transparent.png" });
 
                 await interaction.channel.send({ embeds: [info] });
                 break;
@@ -380,11 +448,35 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.editReply('Suggestions+ successfully reloaded!');
                 break;
 
-            case 'setallowcustomoptions':
+            case 'allowfeedback':
+                setGuildData(guildId, "allowfeedback", interaction.options.getBoolean('allow'));
+                await interaction.editReply('Reloading...');
+                await reload(guildId);
+                await interaction.editReply('Set allow feedback to ' + interaction.options.getBoolean('allow') + '!');
+                break;
+        
+            case 'setfeedbackchannel':
+                const channelF = interaction.options.getChannel('channel');
+                if (!channelF) {
+                    await interaction.editReply("No channel provided!");
+                } else {
+                    setGuildData(guildId, "feedbackchannel", channelF.id);
+                    await interaction.editReply('Set feedback channel to #' + channelF.name + '!');
+                }
+                break;
+
+            case 'allowcustomoptions':
                 setGuildData(guildId, "setallowcustomoptions", interaction.options.getBoolean('allow'));
                 await interaction.editReply('Reloading...');
                 await reload(guildId);
                 await interaction.editReply('Set allow custom options to ' + interaction.options.getBoolean('allow') + '!');
+                break;
+
+            case 'setcustomoptions':
+                setGuildData(guildId, "optionsamount", interaction.options.getInteger('amount'));
+                await interaction.editReply('Reloading...');
+                await reload(guildId);
+                await interaction.editReply('Set custom options amount to ' + interaction.options.getInteger('amount') + ' options!');
                 break;
 
             case 'defaulttags':
@@ -427,9 +519,8 @@ client.on('interactionCreate', async (interaction) => {
                         }
 
                         setGuildData(guildId, "defaultTags", tags);
-                        await interaction.editReply('Default tags now set to:\n```' + JSON.stringify(tags) + '```');
+                        await interaction.editReply('Default tags now set to:\n```' + JSON.stringify(tags) + '```\nTo change the emojis, please run /defaulttags emote.');
                         break;
-
                     case 'view':
                         var tags = JSON.stringify(getGuildData(guildId, "defaultTags") ?? defaultTagsS);
                         await interaction.editReply('Default tags set to:\n```' + tags + '```');
@@ -536,6 +627,26 @@ client.on('interactionCreate', async (interaction) => {
                 }
                 break;
 
+            case 'feedback':
+                if (!getGuildData(guildId, "feedbackchannel")) {
+                    if (isAdmin) {
+                        await interaction.editReply('Please a specify a channel with /setchannel first.');
+                    } else {
+                        await interaction.editReply('No channel specified!');
+                    }
+                    return;
+                }
+
+                var feedbackChannel = await client.channels.fetch(getGuildData(guildId, "feedbackchannel"));
+                var title = interaction.options.getString("title");
+                var desc = interaction.options.getString("description");
+                var id = (getGuildData(guildId, "currentFeedbackId") ?? 0) + 1;
+                var feedbackEmbed = getFeedbackEmbed(id, user, title, desc);
+                setGuildData(guildId, "currentFeedbackId", id);
+                await feedbackChannel.send({embeds: [feedbackEmbed]});
+                await interaction.editReply("Created feedback #" + id + "!");
+                break;
+
             case 'suggest':
                 const rootChannel = await client.channels.fetch(getGuildData(guildId, "channel"));
                 const defaultTags = getGuildData(guildId, "defaultTags") ?? defaultTagsS;
@@ -547,8 +658,10 @@ client.on('interactionCreate', async (interaction) => {
                 var option1 = interaction.options.getString("option1");
                 var option2 = interaction.options.getString("option2");
                 var option3 = interaction.options.getString("option3");
+                var option4 = interaction.options.getString("option4");
+                var option5 = interaction.options.getString("option5");
 
-                if (option1 || option2 || option3) {
+                if (option1 || option2 || option3 || option4 || option5) {
                     if (option1) {
                         tags.push({
                             "name": option1,
@@ -567,6 +680,18 @@ client.on('interactionCreate', async (interaction) => {
                             "emote": "3️⃣",
                         });
                     }
+                    if (option4) {
+                        tags.push({
+                            "name": option4,
+                            "emote": "4️⃣",
+                        });
+                    }
+                    if (option5) {
+                        tags.push({
+                            "name": option5,
+                            "emote": "5️⃣",
+                        });
+                    }
                 } else {
                     tags = defaultTags;
                 }
@@ -576,7 +701,7 @@ client.on('interactionCreate', async (interaction) => {
                 });
 
                 const status = "Under Review";
-                const color = '555599';
+                const color = defaultColor;
                 const embed = getEmbed(id, user, title, desc  + '\n' + tagInfo, status, color);
 
                 if (!rootChannel) {
@@ -615,7 +740,7 @@ client.on('interactionCreate', async (interaction) => {
                 setGuildData(guildId, "currentId", id);
                 setGuildData(guildId, "suggestions", suggestionsList);
 
-                await interaction.editReply("Created suggestion!");
+                await interaction.editReply("Created suggestion #" + id + "!");
                 break;
             case 'suggestion':
                 subcommand = options.getSubcommand();
@@ -637,7 +762,7 @@ client.on('interactionCreate', async (interaction) => {
                         break;
 
                     case 'inprogress':
-                        await edit(guildId, "In Progress", "555599", user, interaction);
+                        await edit(guildId, "In Progress", defaultColor, user, interaction);
                         break;
                 }
                 break;
@@ -679,9 +804,22 @@ function isValidEmojiFormat(string) {
 
 function getEmbed(id, user, title, desc, status, color) {
     return new EmbedBuilder()
+        .setColor(color)
         .setTitle("Suggestion **#" + id + "** by " + user.toString() + ": " + status + "\n" + title)
         .setDescription(desc)
-        .setColor(color);
+        .setThumbnail(user.displayAvatarURL())
+        .setFooter({ text: 'Suggestion #' + id + " by user #" + user.id, iconURL: 'https://example.com/icon.png' })
+        .setTimestamp();
+}
+
+function getFeedbackEmbed(id, user, title, desc) {
+    return new EmbedBuilder()
+        .setColor(defaultColor)
+        .setTitle('Feedback #' + id + " by " + user.toString() + "\n" + title)
+        .setDescription(desc)
+        .setThumbnail(user.displayAvatarURL())
+        .setFooter({ text: 'Feedback #' + id + " by user #" + user.id, iconURL: 'https://example.com/icon.png' })
+        .setTimestamp();
 }
 
 function refresh(guildId) {
@@ -716,7 +854,7 @@ async function setStatus(guildId, id, status, color, reason, user) {
         item.status = status;
         item.reactionInfo = reactionInfo;
 
-        await message.edit({ embeds: [getEmbed(id, client.users.cache.get(user.id), item.title, item.description + '\n' + reactionInfo + '\n**Reason**:\n' + reason, status, color)] });
+        await message.edit({ embeds: [getEmbed(id, client.users.cache.get(user.id), item.title, item.description + '\n' + reactionInfo + '\n\n**Reason**:\n' + reason, status, color)] });
         await message.reactions.removeAll();
         return true;
     } else {
