@@ -8,7 +8,12 @@ require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMessageReactions,
+        GatewayIntentBits.MessageContent
+    ]
 });
 
 const adminCommands = [
@@ -21,11 +26,9 @@ client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// Event: When the bot joins a new server
 client.on('guildCreate', async (guild) => {
     console.log(`Joined a new guild: ${guild.name} (ID: ${guild.id})`);
     
-    // Register slash commands for this guild
     try {
         await registerSlashCommands(guild.id);
     } catch (error) {
@@ -33,7 +36,6 @@ client.on('guildCreate', async (guild) => {
     }
 });
 
-// Function to register slash commands for a specific guild
 async function registerSlashCommands(guildId) {
     console.log("Registering commands...");
     setGuildData(guildId, "commandVer", commandVer);
@@ -925,7 +927,7 @@ function refresh(guildId) {
     console.log("Refreshing...");
 }
 
-async function setStatus(guildId, id, status, color, reason, user) {
+async function setStatus(guildId, id, status, color, reason, user, channel) {
     const array = getGuildData(guildId, "suggestions") ?? [];
     const item = array.find(item => item.id === id);
     if (item) {
@@ -935,7 +937,6 @@ async function setStatus(guildId, id, status, color, reason, user) {
         console.log("tags,reactions: " + tags.length + ',' + reactions.length);
 
         var reactionInfo = '';
-
         if (reactions.length > 0) {
             for (let i = 0; i <= tags.length - 1; i++) {
                 var tag = tags[i];
@@ -963,10 +964,11 @@ async function setStatus(guildId, id, status, color, reason, user) {
 
 async function edit(guildId, status, color, user, interaction) {
     const id = interaction.options.getInteger('id');
-    if (await setStatus(guildId, id, status, color, interaction.options.getString('reason'), user, interaction)) {
+    const rootChannel = await client.channels.fetch(getGuildData(guildId, "channel"));
+    if (await setStatus(guildId, id, status, color, interaction.options.getString('reason'), user, interaction, rootChannel) && rootChannel) {
         await interaction.editReply('Marked suggestion #' + id + ' as ' + status + '!');
     } else {
-        await interaction.editReply('The suggestion doesn\'t exist.');
+        await interaction.editReply('The suggestion or channel doesn\'t exist.');
     }
 }
 
@@ -985,34 +987,27 @@ function setAdminRoles(guildId, adminRoles) {
     setGuildData(guildId, "adminroles", adminRoles);
 }
 
-// Log in to Discord with your bot token
 client.login(process.env.TOKEN);
 
 const fs = require('fs');
 const path = require('path');
-
-// Path to the JSON file
 const dataFilePath = path.join(__dirname, 'data.json');
 
-// Load existing data or initialize
 let guildData = {};
 if (fs.existsSync(dataFilePath)) {
     guildData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
 }
 
-// Function to save data to the JSON file
 function saveData() {
     fs.writeFileSync(dataFilePath, JSON.stringify(guildData, null, 4));
 }
 
-// Function to set data for a guild
 function setGuildData(guildId, key, value) {
     defaultGuildData(guildId);
     guildData[guildId][key] = value;
     saveData();
 }
 
-// Function to get data for a guild
 function getGuildData(guildId, key) {
     defaultGuildData(guildId);
     if (key in guildData[guildId]) {
