@@ -548,25 +548,7 @@ client.on('interactionCreate', async (interaction) => {
 
         switch (commandName) {
             case 'ping':
-                const info = new EmbedBuilder()
-                    .setColor("00FFF0")
-                    .setURL('https://calebh101studios.web.app/suggestionsplus')
-                    .setTitle('Suggestions+ By Calebh101')
-                    .setDescription("Suggestions+ is a Discord bot that allows you to use a customized suggestions/feedback system in your server.")
-                    .setAuthor({
-                        name: 'Calebh101',
-                        iconURL: 'https://raw.githubusercontent.com/Calebh101/Calebh101/main/assets/icon.png',
-                        url: 'https://calebh101studios.web.app',
-                    })
-                    .addFields(
-                        { name: 'Suggestions', value: 'To create a simple suggestion, type `/suggest <title> <description>`. This creates a simple title-description suggestion with the default reactions. To create custom options for your suggestion (if your server allows it), type `/suggest <title> <description> <(up to 5 options, depending on your server\'s decision)>`. This adds custom options with 1️⃣, 2️⃣, 3️⃣, 4️⃣, and 5️⃣ as reactions. You must add at least 2 options.', inline: false },
-                        { name: 'Feedback', value: 'To give feedback to your server, type `/feedback <title> <description> <rating (optional star-based rating, 0 to 5)>`. This command may or not be enabled based on your server\'s preference.', inline: false },
-                    )
-                    .setThumbnail(avatarUrl)
-                    .setTimestamp()
-                    .setFooter({ text: 'Version ' + productVer + ' (Command Version ' + commandVerS + ')', iconURL: avatarUrl });
-
-                await interaction.editReply({ content: 'Pong!', embeds: [info] });
+                await interaction.editReply({ content: 'Pong!', embeds: [getInfoEmbed()] });
                 break;
         
             case 'reload':
@@ -1068,6 +1050,26 @@ function getFeedbackEmbed(id, user, title, desc, rating) {
         .setThumbnail(user.displayAvatarURL())
         .setFooter({ text: 'Feedback #' + id + " by user #" + user.id, iconURL: 'https://example.com/icon.png' })
         .setTimestamp();
+}
+
+function getInfoEmbed() {
+    return new EmbedBuilder()
+        .setColor("00FFF0")
+        .setURL('https://calebh101studios.web.app/suggestionsplus')
+        .setTitle('Suggestions+ By Calebh101')
+        .setDescription("Suggestions+ is a Discord bot that allows you to use a customized suggestions/feedback system in your server.")
+        .setAuthor({
+            name: 'Calebh101',
+            iconURL: 'https://raw.githubusercontent.com/Calebh101/Calebh101/main/assets/icon.png',
+            url: 'https://calebh101studios.web.app',
+        })
+        .addFields(
+            { name: 'Suggestions', value: 'To create a simple suggestion, type `/suggest <title> <description>`. This creates a simple title-description suggestion with the default reactions. To create custom options for your suggestion (if your server allows it), type `/suggest <title> <description> <(up to 5 options, depending on your server\'s decision)>`. This adds custom options with 1️⃣, 2️⃣, 3️⃣, 4️⃣, and 5️⃣ as reactions. You must add at least 2 options.', inline: false },
+            { name: 'Feedback', value: 'To give feedback to your server, type `/feedback <title> <description> <rating (optional star-based rating, 0 to 5)>`. This command may or not be enabled based on your server\'s preference.', inline: false },
+        )
+        .setThumbnail(avatarUrl)
+        .setTimestamp()
+        .setFooter({ text: 'Version ' + productVer + ' (Command Version ' + commandVerS + ')', iconURL: avatarUrl });
 }
 
 function refresh(guildId) {
