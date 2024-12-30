@@ -10,6 +10,23 @@ var disabledMessage = "Suggestions+ is currently undergoing maintenance.";
 var testing = true;
 var testGuilds = "1252103981380141078";
 
+var avatarUrl = 'https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon.png';
+var avatar;
+fetch(avatarUrl)
+    .then(response => {
+        if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.text();
+    })
+    .then(data => {
+        console.log("Retrieved avatar");
+        avatar = data;
+    })
+    .catch(error => {
+        console.error("Error: ", error);
+    });
+
 require('dotenv').config();
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ChannelType } = require('discord.js');
 
@@ -535,12 +552,21 @@ client.on('interactionCreate', async (interaction) => {
                     .setColor("00FFF0")
                     .setURL('https://calebh101studios.web.app/suggestionsplus')
                     .setTitle('Suggestions+ By Calebh101')
-                    .setDescription("Suggestions+ is a Discord bot that allows for custom suggestions to be inputted by users. To use, type `/suggest <suggestion>` to input a suggestion. If you want to add custom options to your suggestion, type `/suggest <suggestion> <option 1> <option 2> <option 3 (optional)>`.")
-                    .setThumbnail('https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon.png')
+                    .setDescription("Suggestions+ is a Discord bot that allows you to use a customized suggestions/feedback system in your server.")
+                    .setAuthor({
+                        name: 'Calebh101',
+                        iconURL: 'https://raw.githubusercontent.com/Calebh101/Calebh101/main/assets/icon.png',
+                        url: 'https://calebh101studios.web.app',
+                    })
+                    .addFields(
+                        { name: 'Suggestions', value: 'To create a simple suggestion, type `/suggest <title> <description>`. This creates a simple title-description suggestion with the default reactions. To create custom options for your suggestion (if your server allows it), type `/suggest <title> <description> <(up to 5 options, depending on your server\'s decision)>`. This adds custom options with 1️⃣, 2️⃣, 3️⃣, 4️⃣, and 5️⃣ as reactions. You must add at least 2 options.', inline: false },
+                        { name: 'Feedback', value: 'To give feedback to your server, type `/feedback <title> <description> <rating (optional star-based rating, 0 to 5)>`. This command may or not be enabled based on your server\'s preference.', inline: false },
+                    )
+                    .setThumbnail(avatarUrl)
                     .setTimestamp()
-                    .setFooter({ text: 'Version ' + productVer + ' (command version ' + commandVerS + ')', icon: "https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon-transparent.png" });
+                    .setFooter({ text: 'Version ' + productVer + ' (Command Version ' + commandVerS + ')', iconURL: avatarUrl });
 
-                    await interaction.editReply({ content: 'Pong!', embeds: [info] });
+                await interaction.editReply({ content: 'Pong!', embeds: [info] });
                 break;
         
             case 'reload':
@@ -838,12 +864,10 @@ client.on('interactionCreate', async (interaction) => {
 
                 console.log("tags (" + typeof tags + "): ", tags);
                 tags.forEach(tag => {
-                    const emojiId = tag.emote.match(/\d+/)?.[0];
-                    const emoji = guild.emojis.cache.get(emojiId);
-                    if (emoji) {
+                    try {
                         tagInfo += "\n" + tag.emote + " " + tag.name;
-                    } else {
-                        console.log("tagInfo: emoji doesn't exist: " + emoji);
+                    } catch (e) {
+                        console.log("tagInfo: " + e);
                         tagInfo += "\n❓ " + tag.name;
                     }
                 });
@@ -863,18 +887,16 @@ client.on('interactionCreate', async (interaction) => {
 
                 if (updatesRoleId) {
                     console.log("Updates role: " + updatesRoleId);
-                    await rootChannel.send({ content: `<@&${updatesRole.id}>`, embeds: [embed] });
+                    message = await rootChannel.send({ content: `<@&${updatesRole.id}>`, embeds: [embed] });
                 } else {
-                    await rootChannel.send({ embeds: [embed] });
+                    message = await rootChannel.send({ embeds: [embed] });
                 }
 
                 tags.forEach(tag => {
-                    const emojiId = tag.emote.match(/\d+/)?.[0];
-                    const emoji = guild.emojis.cache.get(emojiId);
-                    if (emoji) {
+                    try {
                         message.react(tag.emote);
-                    } else {
-                        console.log("message.react: emoji doesn't exist: " + emoji);
+                    } catch (e) {
+                        console.log("message.react: " + e);
                         message.react("❓");
                     }
                 });
@@ -1006,12 +1028,21 @@ function isValidEmojiFormat(string) {
 }
 
 function getEmbed(id, user, title, desc, status, color) {
+    const userAvatar = user.displayAvatarURL({
+        format: 'png',
+        dynamic: true,
+        size: 1024,
+    });
+
     return new EmbedBuilder()
         .setColor(color)
-        .setTitle("Suggestion **#" + id + "** by " + user.toString() + ": " + status + "\n" + title)
+        .setTitle("Suggestion **#" + id + "** by " + user.username + ": " + status + "\n" + title)
         .setDescription(desc)
-        .setThumbnail(user.displayAvatarURL())
-        .setFooter({ text: 'Suggestion #' + id + " by user #" + user.id, iconURL: 'https://example.com/icon.png' })
+        .setAuthor({
+            name: user.username,
+            iconURL: userAvatar,
+        })
+        .setFooter({ text: 'Suggestion #' + id + " by user #" + user.id, iconURL: avatarUrl })
         .setTimestamp();
 }
 
@@ -1134,6 +1165,7 @@ function getGuildData(guildId, key) {
 }
 
 function resetGuildData(guildId) {
+    console.log("Resetting data for guild: " + guildId);
     guildData[guildId] = {};
 }
 
