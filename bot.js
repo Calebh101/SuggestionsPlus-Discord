@@ -548,7 +548,7 @@ client.on('interactionCreate', async (interaction) => {
 
         switch (commandName) {
             case 'ping':
-                await interaction.editReply({ content: 'Pong!', embeds: [getInfoEmbed()] });
+                await interaction.editReply({ content: 'Pong!', embeds: [getInfoEmbed(guildId)] });
                 break;
         
             case 'reload':
@@ -1052,7 +1052,7 @@ function getFeedbackEmbed(id, user, title, desc, rating) {
         .setTimestamp();
 }
 
-function getInfoEmbed() {
+function getInfoEmbed(guildId) {
     return new EmbedBuilder()
         .setColor("00FFF0")
         .setURL('https://calebh101studios.web.app/suggestionsplus')
@@ -1069,7 +1069,7 @@ function getInfoEmbed() {
         )
         .setThumbnail(avatarUrl)
         .setTimestamp()
-        .setFooter({ text: 'Version ' + productVer + ' (Command Version ' + commandVerS + ')', iconURL: avatarUrl });
+        .setFooter({ text: 'Version ' + productVer + ' (Command Version ' + getGuildData(guildId, "commandVer") + ')', iconURL: avatarUrl });
 }
 
 function refresh(guildId) {
