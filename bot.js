@@ -1,6 +1,6 @@
 console.log("Starting...");
-var productVer = "0.0.0B";
-var commandVer = "0.0.0B";
+var productVer = "0.0.0C";
+var commandVer = "0.0.0A";
 var enforceAdmin = true;
 var defaultColor = '555599';
 
@@ -32,6 +32,8 @@ const adminCommands = [
     "setcustomoptions",
     "defaulttags",
     "suggestion",
+    "setupdatesrole",
+    "reset",
 ];
 
 client.once('ready', () => {
@@ -54,6 +56,29 @@ async function registerSlashCommands(guildId) {
             new SlashCommandBuilder()
                 .setName('reload')
                 .setDescription('Reloads Suggestions+ to check for new command updates and such.'),
+            new SlashCommandBuilder()
+                .setName('reset')
+                .setDescription('Resets all Suggestions+ data and settings of your server. This cannot be undone.')
+                .addBooleanOption(option =>
+                    option
+                        .setName('confirm')
+                        .setDescription('Warning! This will open up all of the Suggestions+ commands to everyone! Are you sure?')
+                        .setRequired(true)
+                )
+                .addBooleanOption(option =>
+                    option
+                        .setName('confirmagain')
+                        .setDescription('Are you absolutely sure?')
+                        .setRequired(true)
+                ) ,
+            new SlashCommandBuilder()
+                .setName('setupdatesrole')
+                .setDescription('Sets the optional role to be pinged when a new suggestion comes in.')
+                .addRoleOption(option =>
+                    option.setName('role')
+                        .setDescription('Role to be pinged for new suggestions, not approved/denied/etc suggestions.')
+                        .setRequired(true)
+                ),
             new SlashCommandBuilder()
                 .setName('adminrole')
                 .setDescription('Manage admin roles for Suggestions+.')
@@ -80,6 +105,7 @@ async function registerSlashCommands(guildId) {
                             option
                                 .setName('confirm')
                                 .setDescription('Warning! This will open up all of the Suggestions+ commands to everyone!')
+                                .setRequired(true)
                         )
                 )
                 .addSubcommand(subcommand =>
@@ -444,7 +470,7 @@ client.on('interactionCreate', async (interaction) => {
 
         if (testing) {
             if (!testGuilds.includes(guildId)) {
-                console.log("Bot disabled");
+                console.log("Bot disabled by test for guild: " + guildId);
                 await interaction.reply('This bot has been disabled for maintenance.');
                 return;
             }
@@ -482,7 +508,7 @@ client.on('interactionCreate', async (interaction) => {
         await interaction.reply("Loading...");
 
         if (disabled) {
-            console.log("bot disabled");
+            console.log("Bot disabled by disabled for guild: " + guildId);
             await interaction.editReply(disabledMessage);
             return;
         }
@@ -498,15 +524,13 @@ client.on('interactionCreate', async (interaction) => {
             }
         }
 
-        if (commandVerS !== productVer && isAdmin && commandName !== "reload") {
+        if (commandVerS !== commandVer && isAdmin && commandName !== "reload") {
             console.log("command version: " + commandVer, + ',' + commandVerS, + ',' + commandVerS !== productVer)
             await interaction.channel.send('New command update available: ' + commandVer + '\nRun /reload to use it!')
         }
 
         switch (commandName) {
             case 'ping':
-                interaction.editReply('Pong!\nLoading info...');
-                
                 const info = new EmbedBuilder()
                     .setColor("00FFF0")
                     .setURL('https://calebh101studios.web.app/suggestionsplus')
@@ -516,12 +540,21 @@ client.on('interactionCreate', async (interaction) => {
                     .setTimestamp()
                     .setFooter({ text: 'Version ' + productVer + ' (command version ' + commandVerS + ')', icon: "https://raw.githubusercontent.com/Calebh101/SuggestionsPlus-Discord/master/icons/icon-transparent.png" });
 
-                await interaction.channel.send({ embeds: [info] });
+                    await interaction.editReply({ content: 'Pong!', embeds: [info] });
                 break;
         
             case 'reload':
                 reload(guildId);
                 await interaction.editReply('Suggestions+ successfully reloaded!');
+                break;
+
+            case 'reset':
+                if (interaction.options.getBoolean('confirm') && interaction.options.getBoolean('confirmagain')) {
+                    resetGuildData(guildId);
+                    interaction.editReply('All Suggestions+ data and settings for your server has now been deleted.');
+                } else {
+                    interaction.editReply('Action cancelled.');
+                }
                 break;
 
             case 'allowfeedback':
@@ -539,6 +572,18 @@ client.on('interactionCreate', async (interaction) => {
                     setGuildData(guildId, "feedbackchannel", channelF.id);
                     await interaction.editReply('Set feedback channel to #' + channelF.name + '!');
                 }
+                break;
+
+            case "setupdatesrole":
+                const newRole = interaction.options.getRole('role');
+                if (newRole) {
+                    console.log(`Selected updates role: ${newRole.name}, ${newRole.id}`);
+                    setGuildData(guildId, "updatesrole", newRole.id)
+                    await interaction.editReply("New admin role set: " + newRole.name);
+                } else {
+                    console.log("No role selected.");
+                }
+                interaction.editReply("Updated updates role! This role will now receive updates for new suggestions.");
                 break;
 
             case 'allowcustomoptions':
@@ -812,7 +857,17 @@ client.on('interactionCreate', async (interaction) => {
                     return;
                 }
                 
-                var message = await rootChannel.send({ embeds: [embed] });
+                var message;
+                var updatesRoleId = getGuildData(guildId, "updatesrole");
+                var updatesRole = guild.roles.cache.get(updatesRoleId);
+
+                if (updatesRoleId) {
+                    console.log("Updates role: " + updatesRoleId);
+                    await rootChannel.send({ content: `<@&${updatesRole.id}>`, embeds: [embed] });
+                } else {
+                    await rootChannel.send({ embeds: [embed] });
+                }
+
                 tags.forEach(tag => {
                     const emojiId = tag.emote.match(/\d+/)?.[0];
                     const emoji = guild.emojis.cache.get(emojiId);
@@ -843,6 +898,7 @@ client.on('interactionCreate', async (interaction) => {
 
                 await interaction.editReply("Created suggestion #" + id + "!");
                 break;
+
             case 'suggestion':
                 subcommand = options.getSubcommand();
                 switch (subcommand) {
